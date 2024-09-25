@@ -819,8 +819,12 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
     #     return
     
     def _load_target_asset(self): # smplx
+        # asset_root = "physhoi/data/assets/mjcf/"
+        # asset_file = "ball.urdf"
+
+        #xjt
         asset_root = "physhoi/data/assets/mjcf/"
-        asset_file = "ball.urdf"
+        asset_file = "cup.urdf"
 
         asset_options = gymapi.AssetOptions()
         asset_options.angular_damping = 0.01
@@ -849,12 +853,12 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
         target_handle = self.gym.create_actor(env_ptr, self._target_asset, default_pose, "target", col_group, col_filter, segmentation_id)
 
         # set ball color
-        if self.cfg["headless"] == False:
-            self.gym.set_rigid_body_color(env_ptr, target_handle, 0, gymapi.MESH_VISUAL,
-                                        gymapi.Vec3(1.5, 1.5, 1.5))
-                                        # gymapi.Vec3(0., 1.0, 1.5))
-            h = self.gym.create_texture_from_file(self.sim, 'physhoi/data/assets/mjcf/basketball.png')
-            self.gym.set_rigid_body_texture(env_ptr, target_handle, 0, gymapi.MESH_VISUAL, h)
+        # if self.cfg["headless"] == False:
+        #     self.gym.set_rigid_body_color(env_ptr, target_handle, 0, gymapi.MESH_VISUAL,
+        #                                 gymapi.Vec3(1.5, 1.5, 1.5))
+        #                                 # gymapi.Vec3(0., 1.0, 1.5))
+        #     h = self.gym.create_texture_from_file(self.sim, 'physhoi/data/assets/mjcf/basketball.png')
+        #     self.gym.set_rigid_body_texture(env_ptr, target_handle, 0, gymapi.MESH_VISUAL, h)
 
 
         self._target_handles.append(target_handle)
