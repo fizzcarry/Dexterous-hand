@@ -712,8 +712,12 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
 
     def _create_envs(self, num_envs, spacing, num_per_row):
 
+        #xjt
         self._target_handles = []
+        self._table_handles = []
         self._load_target_asset()
+        self._load_table_asset()
+
         # self._marker_handles = []
         # self._load_marker_asset()
         if self.projtype == "Mouse" or self.projtype == "Auto":
@@ -726,6 +730,8 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
         super()._build_env(env_id, env_ptr, humanoid_asset)
 
         self._build_target(env_id, env_ptr)
+        #xjt
+        self._build_table(env_id, env_ptr)
         # self._build_marker(env_id, env_ptr)
         if self.projtype == "Mouse" or self.projtype == "Auto":
             self._build_proj(env_id, env_ptr)
@@ -851,7 +857,7 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
         default_pose = gymapi.Transform()
 
         target_handle = self.gym.create_actor(env_ptr, self._target_asset, default_pose, "target", col_group, col_filter, segmentation_id)
-
+        #xjt
         # set ball color
         # if self.cfg["headless"] == False:
         #     self.gym.set_rigid_body_color(env_ptr, target_handle, 0, gymapi.MESH_VISUAL,
@@ -866,6 +872,31 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
 
         return
 
+    # xjt
+    def _build_table(self, env_id, env_ptr):
+        col_group = env_id
+        col_filter = 1
+        segmentation_id = 0
+
+        # default_pose = gymapi.Transform()
+        table_initial_pose = gymapi.Transform()
+        table_initial_pose.p = gymapi.Vec3(0.5, 0.0, 0.2)
+        table_initial_pose.r = gymapi.Quat(0.70710678,0,        0,        0.70710678)
+        table_handle = self.gym.create_actor(env_ptr, self._table_asset, table_initial_pose, "table", col_group,
+                                             col_filter, segmentation_id)
+
+        # set ball color
+        # if self.cfg["headless"] == False:
+        #     self.gym.set_rigid_body_color(env_ptr, target_handle, 0, gymapi.MESH_VISUAL,
+        #                                 gymapi.Vec3(1.5, 1.5, 1.5))
+        #                                 # gymapi.Vec3(0., 1.0, 1.5))
+        #     h = self.gym.create_texture_from_file(self.sim, 'physhoi/data/assets/mjcf/basketball.png')
+        #     self.gym.set_rigid_body_texture(env_ptr, target_handle, 0, gymapi.MESH_VISUAL, h)
+
+        self._table_handles.append(table_handle)
+        # self.gym.set_actor_scale(env_ptr, table_handle, self.ball_size)
+        return
+
     # def _build_marker(self, env_id, env_ptr):
     #     col_group = env_id
     #     col_filter = 2
@@ -878,6 +909,28 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
     #     self._marker_handles.append(marker_handle)
     #
     #     return
+
+    # xjt
+    def _load_table_asset(self):  # smplx
+        resolution = {'object': 8000000, 'table': 2000000}
+
+        asset_root = "physhoi/data/assets/mjcf/"
+        table_asset_file = "table.urdf"
+        table_asset_options = gymapi.AssetOptions()
+        table_asset_options.armature = 0.001
+        table_asset_options.fix_base_link = False
+        table_asset_options.thickness = 0.002
+        table_asset_options.flip_visual_attachments = False
+        table_asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
+        table_asset_options.vhacd_enabled = True
+
+        table_asset_options.vhacd_enabled = True
+        table_asset_options.vhacd_params.resolution = resolution['table']
+        table_asset_options.vhacd_params.max_convex_hulls = 40
+        table_asset_options.vhacd_params.max_num_vertices_per_ch = 64
+        table_asset_options.fix_base_link = True
+        self._table_asset = self.gym.load_asset(self.sim, asset_root, table_asset_file, table_asset_options)
+        return
     
     def _build_target_tensors(self):
         num_actors = self.get_num_actors_per_env()
