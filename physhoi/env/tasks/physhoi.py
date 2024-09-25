@@ -1488,25 +1488,27 @@ def compute_humanoid_reward(hoi_ref, hoi_obs, contact_buf, tar_contact_forces, l
     # R_Hand, 37-51
 
     # body contact
-    contact_body_ids = [0,1,2,5,6,9,10,11,12,13,14,15,16,33,34,35]
-    body_contact_buf = contact_buf[:, contact_body_ids, :].clone()
-    body_contact = torch.all(torch.abs(body_contact_buf) < 0.1, dim=-1)
-    body_contact = torch.all(body_contact, dim=-1).to(float) # =1 when no contact happens to the body
-
-    # object contact
-    obj_contact = torch.any(torch.abs(tar_contact_forces[..., 0:2]) > 0.1, dim=-1).to(float) # =1 when contact happens to the object
-
-    ref_body_contact = torch.ones_like(ref_obj_contact) # no body contact for all time
-    ecg1 = torch.abs(body_contact - ref_body_contact[:,0])
-    rcg1 = torch.exp(-ecg1*w['cg1'])
-    ecg2 = torch.abs(obj_contact - ref_obj_contact[:,0])
-    rcg2 = torch.exp(-ecg2*w['cg2'])
-
-    rcg = rcg1*rcg2
+    #xjt
+    # contact_body_ids = [0,1,2,5,6,9,10,11,12,13,14,15,16,33,34,35]
+    # body_contact_buf = contact_buf[:, contact_body_ids, :].clone()
+    # body_contact = torch.all(torch.abs(body_contact_buf) < 0.1, dim=-1)
+    # body_contact = torch.all(body_contact, dim=-1).to(float) # =1 when no contact happens to the body
+    #
+    # # object contact
+    # obj_contact = torch.any(torch.abs(tar_contact_forces[..., 0:2]) > 0.1, dim=-1).to(float) # =1 when contact happens to the object
+    #
+    # ref_body_contact = torch.ones_like(ref_obj_contact) # no body contact for all time
+    # ecg1 = torch.abs(body_contact - ref_body_contact[:,0])
+    # rcg1 = torch.exp(-ecg1*w['cg1'])
+    # ecg2 = torch.abs(obj_contact - ref_obj_contact[:,0])
+    # rcg2 = torch.exp(-ecg2*w['cg2'])
+    #
+    # rcg = rcg1*rcg2
 
 
     ### task-agnostic HOI imitation reward ###
-    reward = rb*ro*rig*rcg
+    #xjt
+    reward = rb*ro*rig
 
     return reward
 
