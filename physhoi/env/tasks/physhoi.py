@@ -34,7 +34,7 @@ import glob, os, random
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
-
+from torchvision.transforms import functional as F
 from utils import torch_utils
 
 from env.tasks.base_task import BaseTask
@@ -60,7 +60,9 @@ class Humanoid_SMPLX(BaseTask):
         self.plane_dynamic_friction = self.cfg["env"]["plane"]["dynamicFriction"]
         self.plane_restitution = self.cfg["env"]["plane"]["restitution"]
 
-        self.ref_hoi_obs_size = 324 + len(self.cfg["env"]["keyBodies"])*3
+        # xjt
+        self.ref_hoi_obs_size = 217
+        # self.ref_hoi_obs_size = 324 + len(self.cfg["env"]["keyBodies"]) * 3
         self._local_root_obs = self.cfg["env"]["localRootObs"]
         self._root_height_obs = self.cfg["env"].get("rootHeightObs", True)
         self._enable_early_termination = self.cfg["env"]["enableEarlyTermination"]
@@ -209,11 +211,15 @@ class Humanoid_SMPLX(BaseTask):
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
         num_key_bodies = len(key_bodies)
 
+        #xjt
         if (asset_file == "smplx/smplx_capsule.xml"):
-            self._dof_obs_size = (51)*3
-            self._num_actions = (51)*3
+            self._dof_obs_size = 46
+            self._num_actions = 46
             obj_obs_size = 15
-            self._num_obs = 1 + (52) * (3 + 6 + 3 + 3) - 3 + 10*3 + obj_obs_size + self.ref_hoi_obs_size
+            contact_num=24
+            #xjt
+            self._num_obs = 1 + (50) * (3 + 6 + 3 + 3) - 3 + contact_num * 3 + obj_obs_size + self.ref_hoi_obs_size
+            self._num_obs = 1 + (50) * (3 + 6 + 3 + 3) - 3 + contact_num*3 + obj_obs_size + self.ref_hoi_obs_size+3
         else:
             print("Unsupported character config file: {s}".format(asset_file))
             assert(False)
@@ -232,8 +238,12 @@ class Humanoid_SMPLX(BaseTask):
         lower = gymapi.Vec3(-spacing, -spacing, 0.0)
         upper = gymapi.Vec3(spacing, spacing, spacing)
 
-        asset_root = self.cfg["env"]["asset"]["assetRoot"]
-        asset_file = self.cfg["env"]["asset"]["assetFileName"]
+        # asset_root = self.cfg["env"]["asset"]["assetRoot"]
+        # asset_file = self.cfg["env"]["asset"]["assetFileName"]
+        #xjt
+        asset_root = "physhoi/data/assets"
+        asset_file = "h1/urdf/h1_inspire_bake.urdf"
+
 
         asset_path = os.path.join(asset_root, asset_file)
         asset_root = os.path.dirname(asset_path)
@@ -247,10 +257,23 @@ class Humanoid_SMPLX(BaseTask):
         # asset_options.disable_gravity = True
         humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
 
+        a=os.getcwd()
+
         self.num_humanoid_bodies = self.gym.get_asset_rigid_body_count(humanoid_asset)
         self.num_humanoid_shapes = self.gym.get_asset_rigid_shape_count(humanoid_asset)
 
-        actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
+        #xjt
+        num_dof = self.gym.get_asset_dof_count(humanoid_asset)
+        actuator_props = [gymapi.ActuatorProperties() for _ in range(num_dof)]
+        for prop in actuator_props:
+            prop.motor_effort = 500.0  # 设置 motor_effort
+            # 你可以设置其他属性，比如 damping 和 stiffness
+        # self.gym.set_asset_actuator_properties(humanoid_asset, actuator_props)
+
+
+
+
+        # actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
         motor_efforts = [prop.motor_effort for prop in actuator_props]
         
         # create force sensors at the feet
@@ -274,17 +297,18 @@ class Humanoid_SMPLX(BaseTask):
         self.dof_limits_lower = []
         self.dof_limits_upper = []
 
-        max_agg_bodies = self.num_humanoid_bodies + 2
-        max_agg_shapes = self.num_humanoid_shapes + 2        
+        #xjt
+        # max_agg_bodies = self.num_humanoid_bodies + 2
+        # max_agg_shapes = self.num_humanoid_shapes + 2
         
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(self.sim, lower, upper, num_per_row)
-            self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
+            # self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             self._build_env(i, env_ptr, humanoid_asset)
 
-            self.gym.end_aggregate(env_ptr)
+            # self.gym.end_aggregate(env_ptr)
             self.envs.append(env_ptr)
 
         dof_prop = self.gym.get_actor_dof_properties(self.envs[0], self.humanoid_handles[0])
@@ -313,15 +337,19 @@ class Humanoid_SMPLX(BaseTask):
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
         char_h = 0.89
 
+        #xjt
         start_pose.p = gymapi.Vec3(*get_axis_params(char_h, self.up_axis_idx))
+        start_pose.p = gymapi.Vec3(0,0,1)
         start_pose.r = gymapi.Quat(0.0, 0.0, 0.0, 1.0)
 
         humanoid_handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", col_group, col_filter, segmentation_id)
 
         self.gym.enable_actor_dof_force_sensors(env_ptr, humanoid_handle)
 
-        for j in range(self.num_bodies):
-            self.gym.set_rigid_body_color(env_ptr, humanoid_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.54, 0.85, 0.2))
+        # for j in range(self.num_bodies):
+        #     self.gym.set_rigid_body_color(env_ptr, humanoid_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.54, 0.85, 0.2))
+        # for j in range(self.num_bodies):
+        #     self.gym.set_rigid_body_color(env_ptr, humanoid_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.2, 0.85, 0.54))
 
         if (self._pd_control):
             dof_prop = self.gym.get_asset_dof_properties(humanoid_asset)
@@ -440,6 +468,7 @@ class Humanoid_SMPLX(BaseTask):
 
     def pre_physics_step(self, actions):
         self.actions = actions.to(self.device).clone()
+
         if (self._pd_control):
             pd_tar = self._action_to_pd_targets(self.actions)
             pd_tar_tensor = gymtorch.unwrap_tensor(pd_tar)
@@ -625,6 +654,21 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
         super()._setup_character_props(key_bodies)
         return
 
+    def quaternion_to_euler(self,quat):
+        # 四元数分量
+        x, y, z,w = quat[:, 0], quat[:, 1], quat[:, 2], quat[:, 3]
+
+        # 计算欧拉角（以弧度为单位）
+        # Roll (x-axis rotation)
+        roll = torch.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
+
+        # Pitch (y-axis rotation)
+        pitch = torch.asin(2 * (w * y - z * x))
+
+        # Yaw (z-axis rotation)
+        yaw = torch.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+
+        return torch.stack((roll, pitch, yaw), dim=1)
 
     def _load_motion(self, motion_file):
 
@@ -635,51 +679,74 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
 
         loaded_dict = {}
         hoi_data = torch.load(data_path)
-        loaded_dict['hoi_data'] = hoi_data.detach().to('cuda')
+        #xjt
+        # loaded_dict['hoi_data'] = hoi_data.detach().to('cuda')
 
         # '''change the data framerate'''
         # NOTE: this is used for temporary testing, and is not rigorous that may yield incorrect rotations.
-        dataFramesScale = self.cfg["env"]["dataFramesScale"]
-        scale_hoi_data = torch.nn.functional.interpolate(loaded_dict['hoi_data'].unsqueeze(1).transpose(0,2), scale_factor=dataFramesScale, mode='linear', align_corners=True)
-        loaded_dict['hoi_data'] = scale_hoi_data.transpose(0,2).squeeze(1).clone().contiguous()
+        # dataFramesScale = self.cfg["env"]["dataFramesScale"]
+        # scale_hoi_data = torch.nn.functional.interpolate(loaded_dict['hoi_data'].unsqueeze(1).transpose(0,2), scale_factor=dataFramesScale, mode='linear', align_corners=True)
+        # loaded_dict['hoi_data'] = scale_hoi_data.transpose(0,2).squeeze(1).clone().contiguous()
 
-        self.max_episode_length = loaded_dict['hoi_data'].shape[0]
-        self.fps_data = 30.
+        #xjt
+        self.max_episode_length = len(hoi_data['human_root_state'])
+        # self.max_episode_length = loaded_dict['hoi_data'].shape[0]
+        self.fps_data = 45.
         # self.fps_data = self.cfg["env"]["dataFPS"]*dataFramesScale
-
-        loaded_dict['root_pos'] = loaded_dict['hoi_data'][:, 0:3].clone()
+        #xjt
+        # loaded_dict['root_pos'] = loaded_dict['hoi_data'][:, 0:3].clone()
+        loaded_dict['root_pos'] = hoi_data['human_root_state'][:,0:3].to('cuda')
         loaded_dict['root_pos_vel'] = (loaded_dict['root_pos'][1:,:].clone() - loaded_dict['root_pos'][:-1,:].clone())*self.fps_data
         loaded_dict['root_pos_vel'] = torch.cat((torch.zeros((1, loaded_dict['root_pos_vel'].shape[-1])).to('cuda'),loaded_dict['root_pos_vel']),dim=0)
 
-        loaded_dict['root_rot'] = loaded_dict['hoi_data'][:, 3:6].clone()
+        #xjt
+
+
+        # 定义四元数 (w, x, y, z)
+        quaternion = hoi_data['human_root_state'][:,3:7].to('cuda') # 例如，代表90度绕x轴旋转
+        # 将四元数转换为旋转角（弧度）
+        loaded_dict['root_rot'] = self.quaternion_to_euler(quaternion)
+        # loaded_dict['root_rot'] = loaded_dict['hoi_data'][:, 3:6].clone()
         loaded_dict['root_rot_data'] = loaded_dict['root_rot'].clone()
         loaded_dict['root_rot_vel'] = (loaded_dict['root_rot'][1:,:].clone() - loaded_dict['root_rot'][:-1,:].clone())*self.fps_data
         loaded_dict['root_rot_vel'] = torch.cat((torch.zeros((1, loaded_dict['root_rot_vel'].shape[-1])).to('cuda'),loaded_dict['root_rot_vel']),dim=0)
         loaded_dict['root_rot'] = torch_utils.exp_map_to_quat(loaded_dict['root_rot']).clone()
+        torch_utils.quat_to_tan_norm
 
-        loaded_dict['dof_pos'] = loaded_dict['hoi_data'][:, 9:9+153].clone()
+
+        #xjt
+        loaded_dict['dof_pos'] = hoi_data['dof_state_tensor'][:,:,0].to('cuda')
+        # loaded_dict['dof_pos'] = loaded_dict['hoi_data'][:, 9:9+153].clone()
         loaded_dict['dof_pos_vel'] = (loaded_dict['dof_pos'][1:,:].clone() - loaded_dict['dof_pos'][:-1,:].clone())*self.fps_data
         loaded_dict['dof_pos_vel'] = torch.cat((torch.zeros((1, loaded_dict['dof_pos_vel'].shape[-1])).to('cuda'),loaded_dict['dof_pos_vel']),dim=0)
 
-        loaded_dict['body_pos'] = loaded_dict['hoi_data'][:, 162: 162+52*3].clone().view(self.max_episode_length,52,3)
+        #xjt
+        loaded_dict['body_pos'] = hoi_data['human_rigid_body_states'][:, :,0:3].to('cuda')
+        # loaded_dict['body_pos'] = loaded_dict['hoi_data'][:, 162: 162+52*3].clone().view(self.max_episode_length,52,3)
         loaded_dict['key_body_pos'] = loaded_dict['body_pos'][:, self._key_body_ids, :].view(self.max_episode_length,-1).clone()
         loaded_dict['key_body_pos_vel'] = (loaded_dict['key_body_pos'][1:,:].clone() - loaded_dict['key_body_pos'][:-1,:].clone())*self.fps_data
         loaded_dict['key_body_pos_vel'] = torch.cat((torch.zeros((1, loaded_dict['key_body_pos_vel'].shape[-1])).to('cuda'),loaded_dict['key_body_pos_vel']),dim=0)
 
-        loaded_dict['obj_pos'] = loaded_dict['hoi_data'][:, 318:321].clone()
+        #xjt
+        loaded_dict['obj_pos'] = hoi_data['object_rigid_body_states'][:,0,0:3].to('cuda')
+        # loaded_dict['obj_pos'] = loaded_dict['hoi_data'][:, 318:321].clone()
         loaded_dict['obj_pos_vel'] = (loaded_dict['obj_pos'][1:,:].clone() - loaded_dict['obj_pos'][:-1,:].clone())*self.fps_data
         if self.init_vel:
             loaded_dict['obj_pos_vel'] = torch.cat((loaded_dict['obj_pos_vel'][:1],loaded_dict['obj_pos_vel']),dim=0)
         else:
             loaded_dict['obj_pos_vel'] = torch.cat((torch.zeros((1, loaded_dict['obj_pos_vel'].shape[-1])).to('cuda'),loaded_dict['obj_pos_vel']),dim=0)
-        
 
-        loaded_dict['obj_rot'] = -loaded_dict['hoi_data'][:, 321:324].clone()
+        #xjt
+        quaternion = hoi_data['object_rigid_body_states'][:, 0, 3:7].to('cuda')  # 例如，代表90度绕x轴旋转
+        # 将四元数转换为旋转角（弧度）
+        loaded_dict['obj_rot'] = -self.quaternion_to_euler(quaternion)
+        # loaded_dict['obj_rot'] = -loaded_dict['hoi_data'][:, 321:324].clone()
         loaded_dict['obj_rot_vel'] = (loaded_dict['obj_rot'][1:,:].clone() - loaded_dict['obj_rot'][:-1,:].clone())*self.fps_data
         loaded_dict['obj_rot_vel'] = torch.cat((torch.zeros((1, loaded_dict['obj_rot_vel'].shape[-1])).to('cuda'),loaded_dict['obj_rot_vel']),dim=0)
-        loaded_dict['obj_rot'] = torch_utils.exp_map_to_quat(-loaded_dict['hoi_data'][:, 321:324]).clone()
+        loaded_dict['obj_rot'] = torch_utils.exp_map_to_quat(loaded_dict['obj_rot']).clone()
 
-        loaded_dict['contact'] = torch.round(loaded_dict['hoi_data'][:, 330:331].clone())
+        #xjt
+        # loaded_dict['contact'] = torch.round(loaded_dict['hoi_data'][:, 330:331].clone())
 
         loaded_dict['hoi_data'] = torch.cat((
                                                 loaded_dict['root_pos'].clone(),
@@ -690,7 +757,6 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
                                                 loaded_dict['obj_rot'].clone(),
                                                 loaded_dict['obj_pos_vel'].clone(),
                                                 loaded_dict['key_body_pos'][:,:].clone(),
-                                                loaded_dict['contact'].clone()
                                                 ),dim=-1)
 
         assert(self.ref_hoi_obs_size == loaded_dict['hoi_data'].shape[-1])
@@ -1057,7 +1123,8 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
     def _compute_hoi_observations(self, env_ids=None):
         key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         ## diffvel, set 0 for the first frame
-        hist_dof_pos = self._hist_obs[:,7:7+153]
+        #xjt
+        hist_dof_pos = self._hist_obs[:,7:7+self.num_dof]
         dof_diffvel = (self._dof_pos - hist_dof_pos)*self.fps_data
         dof_diffvel = dof_diffvel*(self.progress_buf!=1).to(float).unsqueeze(dim=-1)
 
@@ -1286,9 +1353,12 @@ class PhysHOI_BallPlay(Humanoid_SMPLX):
 def build_hoi_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos, 
                            local_root_obs, root_height_obs, dof_obs_size, target_states, dof_diffvel):
 
-
+    #xjt
     contact = torch.zeros(key_body_pos.shape[0],1).cuda()
-    obs = torch.cat((root_pos, root_rot, dof_pos, dof_diffvel, target_states[:,:10], key_body_pos.contiguous().view(-1,key_body_pos.shape[1]*key_body_pos.shape[2]), contact), dim=-1)
+    obs = torch.cat((root_pos, root_rot, dof_pos, dof_diffvel, target_states[:, :10],
+                     key_body_pos.contiguous().view(-1, key_body_pos.shape[1] * key_body_pos.shape[2])),
+                    dim=-1)
+    # obs = torch.cat((root_pos, root_rot, dof_pos, dof_diffvel, target_states[:,:10], key_body_pos.contiguous().view(-1,key_body_pos.shape[1]*key_body_pos.shape[2]), contact), dim=-1)
     return obs
 
 
@@ -1378,12 +1448,12 @@ def compute_humanoid_reward(hoi_ref, hoi_obs, contact_buf, tar_contact_forces, l
     # simulated states
     root_pos = hoi_obs[:,:3]
     root_rot = hoi_obs[:,3:3+4]
-    dof_pos = hoi_obs[:,7:7+51*3]
-    dof_pos_vel = hoi_obs[:,160:160+51*3]
-    obj_pos = hoi_obs[:,313:313+3]
-    obj_rot = hoi_obs[:,316:316+4]
-    obj_pos_vel = hoi_obs[:,320:320+3]
-    key_pos = hoi_obs[:,323:323+len_keypos*3]
+    dof_pos = hoi_obs[:,7:7+46]
+    dof_pos_vel = hoi_obs[:,53:53+46]
+    obj_pos = hoi_obs[:,99:99+3]
+    obj_rot = hoi_obs[:,102:102+4]
+    obj_pos_vel = hoi_obs[:,106:106+3]
+    key_pos = hoi_obs[:,109:109+len_keypos*3]
     contact = hoi_obs[:,-1:]# fake one
     key_pos = torch.cat((root_pos, key_pos),dim=-1)
     body_rot = torch.cat((root_rot, dof_pos),dim=-1)
@@ -1393,13 +1463,14 @@ def compute_humanoid_reward(hoi_ref, hoi_obs, contact_buf, tar_contact_forces, l
     # reference states
     ref_root_pos = hoi_ref[:,:3]
     ref_root_rot = hoi_ref[:,3:3+4]
-    ref_dof_pos = hoi_ref[:,7:7+51*3]
-    ref_dof_pos_vel = hoi_ref[:,160:160+51*3]
-    ref_obj_pos = hoi_ref[:,313:313+3]
-    ref_obj_rot = hoi_ref[:,316:316+4]
-    ref_obj_pos_vel = hoi_ref[:,320:320+3]
-    ref_key_pos = hoi_ref[:,323:323+len_keypos*3]
+    ref_dof_pos = hoi_ref[:,7:7+46]
+    ref_dof_pos_vel = hoi_ref[:,53:53+46]
+    ref_obj_pos = hoi_ref[:,99:99+3]
+    ref_obj_rot = hoi_ref[:,102:102+4]
+    ref_obj_pos_vel = hoi_ref[:,106:106+3]
+    ref_key_pos = hoi_ref[:,109:109+len_keypos*3]
     ref_obj_contact = hoi_ref[:,-1:]
+
     ref_key_pos = torch.cat((ref_root_pos, ref_key_pos),dim=-1)
     ref_body_rot = torch.cat((ref_root_rot, ref_dof_pos),dim=-1)
     ref_ig = ref_key_pos.view(-1,len_keypos+1,3).transpose(0,1) - ref_obj_pos[:,:3]

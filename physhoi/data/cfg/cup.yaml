@@ -1,0 +1,68 @@
+# if given, will override the device setting in gym. 
+env: 
+  numEnvs: 4096
+  envSpacing: 5
+  episodeLength: 40
+  isFlagrun: False
+  enableDebugVis: False
+  playdataset: False
+  projtype: "None"
+  saveImages: False
+  initVel: False
+  
+  pdControl: True
+  powerScale: 1.0
+  controlFrequencyInv: 2 # 30 Hz
+  stateInit: "Start" #Random
+  hybridInitProb: 0.5
+  dataFPS: 25
+  dataFramesScale: 1.2 # 25->30fps
+  ballSize: 1.
+
+  localRootObs: False
+  keyBodies: ["left_shoulder_pitch_link", "left_shoulder_roll_link", "left_shoulder_yaw_link", "left_elbow_link", "cylinder_link", "base_link", "link1", "link11", "link2","link22", "link3", "link33", "link4", "link44", "link5",  "link51", "link52", "link53", "right_shoulder_pitch_link","right_shoulder_roll_link", "right_shoulder_yaw_link", "right_elbow_link", "cylinder_link_right", "Link111","Link1", "Link11", "Link2","Link22", "Link3", "Link33", "Link4", "Link44","Link5", "Link51", "Link52", "Link53"]
+  contactBodies:  ["link1", "link11", "link2","link22", "link3", "link33", "link4", "link44", "link5",  "link51", "link52", "link53", "Link111","Link1", "Link11", "Link2","Link22", "Link3", "Link33", "Link4", "Link44","Link5", "Link51", "Link52", "Link53"]
+  terminationHeight: 0.15
+  enableEarlyTermination: True
+
+  asset:
+    assetRoot: "physhoi/data/assets"
+    assetFileName: "smplx/smplx_capsule.xml"
+
+  plane:
+    staticFriction: 1.0
+    dynamicFriction: 1.0
+    restitution: 1.6
+  
+  rewardWeights:
+    p: 50.
+    r: 50.
+    pv: 0.
+    rv: 0.
+
+    op: 1.
+    or: 0.
+    opv: 0.
+    orv: 0.
+
+    ig: 20.
+
+    cg1: 5.
+    cg2: 5.
+
+sim:
+  substeps: 2
+  physx:
+    num_threads: 4
+    solver_type: 1  # 0: pgs, 1: tgs
+    num_position_iterations: 4
+    num_velocity_iterations: 0
+    contact_offset: 0.02
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 10.0
+    default_buffer_size_multiplier: 10.0
+
+  flex:
+    num_inner_iterations: 10
+    warm_start: 0.25

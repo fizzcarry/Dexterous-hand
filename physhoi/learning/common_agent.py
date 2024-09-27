@@ -33,6 +33,7 @@ import numpy as np
 import os
 import time
 import yaml
+from guppy import hpy
 
 from rl_games.algos_torch import a2c_continuous
 from rl_games.algos_torch import torch_ext
@@ -114,6 +115,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         total_time = 0
         rep_count = 0
         self.frame = 0
+        #xjt
+        # hp=hpy()
+        # print(hp.heap())
 
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
@@ -143,8 +147,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 if self.print_stats:
                     fps_step = curr_frames / scaled_play_time
                     fps_total = curr_frames / scaled_time
-                    print("epoch_num:{}".format(epoch_num), "mean_rewards:{}".format(self._get_mean_rewards()), f'fps step: {fps_step:.1f} fps total: {fps_total:.1f}')
 
+                    print("epoch_num:{}".format(epoch_num), "mean_rewards:{}".format(self._get_mean_rewards()), f'fps step: {fps_step:.1f} fps total: {fps_total:.1f}')
+                    # print(hp.heap())
                 self.writer.add_scalar('performance/total_fps', curr_frames / scaled_time, frame)
                 self.writer.add_scalar('performance/step_fps', curr_frames / scaled_play_time, frame)
                 self.writer.add_scalar('info/epochs', epoch_num, frame)
